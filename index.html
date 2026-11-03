@@ -81,6 +81,11 @@
     .result-score { color: var(--mint); font-size: 64px; line-height: 1.1; margin: 20px 0 10px; font-family: Georgia, serif; }
     .result-score span { font-size: 26px; color: var(--muted); }
     .results-message { color: var(--muted); margin: 0 auto 24px; max-width: 480px; }
+    .practice-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; }
+    .secondary { display: inline-flex; align-items: center; justify-content: center; background: var(--panel); color: var(--ink); border: 1px solid var(--line); padding: 11px 18px; border-radius: 5px; font-weight: bold; min-height: 46px; }
+    .secondary:hover { border-color: var(--mint); }
+    .practice-complete { max-width: 760px; margin: auto; text-align: center; }
+    .practice-complete h2 { font: normal 38px/1.2 Georgia, serif; margin: 10px 0 16px; }
     .review { margin: 38px 0 10px; text-align: left; border-top: 1px solid var(--line); }
     .review h3 { font-size: 17px; margin: 22px 0; }
     .review ol { list-style: none; padding: 0; margin: 0; }
@@ -129,6 +134,7 @@
             <div class="mission-note"><h2>Your flight log</h2><p>From our nearest neighbor to the edges of discovery. How far will your knowledge take you?</p><div id="flightpath" class="flightpath" aria-hidden="true"></div></div>
           </aside>
           <div>
+            <p id="practice-banner" class="eyebrow" hidden>Practice mission · Missed questions</p>
             <div class="status"><span id="question-count">Question 01 / 10</span><span class="score"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9Z"/></svg><span id="score">0 points</span></span></div>
             <progress id="progress" value="0" max="10" aria-label="Questions answered">0 of 10</progress>
             <span id="category" class="category"></span>
@@ -144,8 +150,15 @@
         <svg class="results-art" viewBox="0 0 100 100" fill="none" aria-hidden="true"><circle cx="50" cy="50" r="45" stroke="#53615d" stroke-dasharray="3 6"/><path d="m50 17 10 21 24 4-17 17 4 24-21-12-21 12 4-24-17-17 24-4Z" fill="#f8d67c"/><circle cx="50" cy="50" r="12" fill="#171d26"/><path d="m44 50 4 4 8-9" stroke="#a4efd5" stroke-width="3"/></svg>
         <p class="eyebrow">Mission complete</p><h2 id="results-title" tabindex="-1">Your cosmic report</h2>
         <div id="result-score" class="result-score"></div><p id="results-message" class="results-message"></p>
-        <button id="restart" class="primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 11a9 9 0 1 1 2 7M3 4v7h7"/></svg>Explore again</button>
+        <div class="practice-actions"><button id="practice-missed" class="secondary" hidden>Practice missed questions</button><button id="restart" class="primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 11a9 9 0 1 1 2 7M3 4v7h7"/></svg>Explore again</button></div>
         <div class="review"><h3>Your flight log</h3><ol id="review-list"></ol></div>
+      </section>
+      <section id="practice-complete" class="practice-complete" aria-labelledby="practice-complete-title" hidden>
+        <p class="eyebrow">Practice complete</p>
+        <h2 id="practice-complete-title" tabindex="-1">Missed questions revisited</h2>
+        <div id="practice-result-score" class="result-score"></div>
+        <p class="results-message">Your original mission report is unchanged. Review it again or launch a fresh mission.</p>
+        <div class="practice-actions"><button id="return-results" class="secondary">Return to mission results</button><button id="practice-restart" class="primary">Explore again</button></div>
       </section>
     </main>
     <footer><span>ORBIT ACADEMY <span class="footer-star">✦</span> An adventure in knowledge</span><span>Earth is just the beginning.</span></footer>
@@ -173,21 +186,34 @@
     }
 
     let questions = shuffleQuestions(questionBank);
-    const elements = Object.fromEntries(['quiz', 'results', 'question-count', 'score', 'progress', 'category', 'question', 'answers', 'feedback', 'answered-label', 'next', 'next-label', 'flightpath', 'result-score', 'results-message', 'results-title', 'review-list', 'restart'].map(id => [id, document.getElementById(id)]));
+    const elements = Object.fromEntries(['quiz', 'results', 'practice-complete', 'practice-banner', 'question-count', 'score', 'progress', 'category', 'question', 'answers', 'feedback', 'answered-label', 'next', 'next-label', 'flightpath', 'result-score', 'results-message', 'results-title', 'review-list', 'restart', 'practice-missed', 'practice-complete-title', 'practice-result-score', 'return-results', 'practice-restart'].map(id => [id, document.getElementById(id)]));
     let current = 0;
     let score = 0;
     let responses = [];
+    let practiceMode = false;
+    let practiceQuestions = [];
+    let practiceResponses = [];
+    let practiceScore = 0;
+
+    function activeQuestions() {
+      return practiceMode ? practiceQuestions : questions;
+    }
+
+    function activeResponses() {
+      return practiceMode ? practiceResponses : responses;
+    }
 
     function renderQuestion(focus = false) {
-      const item = questions[current];
-      elements['question-count'].textContent = `Question ${String(current + 1).padStart(2, '0')} / 10`;
+      const items = activeQuestions();
+      const item = items[current];
+      elements['question-count'].textContent = `Question ${String(current + 1).padStart(2, '0')} / ${items.length}`;
       elements.category.textContent = item.category;
       elements.question.textContent = item.question;
       elements.answers.replaceChildren();
       elements.feedback.replaceChildren();
       elements.feedback.className = 'feedback';
       elements.next.disabled = true;
-      elements['next-label'].textContent = current === questions.length - 1 ? 'View results' : 'Next question';
+      elements['next-label'].textContent = current === items.length - 1 ? (practiceMode ? 'Finish practice' : 'View results') : 'Next question';
       item.answers.forEach((answer, index) => {
         const button = document.createElement('button');
         button.className = 'answer';
@@ -207,23 +233,33 @@
     }
 
     function updateStatus() {
-      elements.score.textContent = `${score} ${score === 1 ? 'point' : 'points'}`;
-      elements.progress.value = responses.length;
-      elements.progress.textContent = `${responses.length} of 10`;
-      elements['answered-label'].textContent = `${responses.length} of 10 answered`;
-      elements.flightpath.replaceChildren(...questions.map((item, index) => {
+      const items = activeQuestions();
+      const answers = activeResponses();
+      const total = items.length;
+      const points = practiceMode ? practiceScore : score;
+      elements.score.textContent = `${points} ${points === 1 ? 'point' : 'points'}`;
+      elements.progress.max = total;
+      elements.progress.value = answers.length;
+      elements.progress.textContent = `${answers.length} of ${total}`;
+      elements['answered-label'].textContent = `${answers.length} of ${total} answered`;
+      elements.flightpath.replaceChildren(...items.map((item, index) => {
         const mark = document.createElement('span');
-        mark.className = index < responses.length ? (responses[index] === item.correct ? 'right' : 'wrong') : index === current ? 'current' : '';
+        mark.className = index < answers.length ? (answers[index] === item.correct ? 'right' : 'wrong') : index === current ? 'current' : '';
         return mark;
       }));
     }
 
     function selectAnswer(selected) {
-      if (responses.length > current) return;
-      const item = questions[current];
+      const items = activeQuestions();
+      const answers = activeResponses();
+      if (answers.length > current) return;
+      const item = items[current];
       const correct = selected === item.correct;
-      responses.push(selected);
-      if (correct) score++;
+      answers.push(selected);
+      if (correct) {
+        if (practiceMode) practiceScore++;
+        else score++;
+      }
       Array.from(elements.answers.children).forEach((button, index) => {
         button.disabled = true;
         if (index === item.correct) {
@@ -263,6 +299,7 @@
       total.textContent = ' / 10';
       elements['result-score'].append(total);
       elements['results-message'].textContent = score === 10 ? 'A perfect orbit! Your knowledge is out of this world.' : score >= 7 ? 'An accomplished explorer. There is always more universe to discover.' : score >= 4 ? 'A promising expedition. Every discovery brings you a little further.' : 'Every explorer starts somewhere. Your next mission begins with what you learned today.';
+      elements['practice-missed'].hidden = responses.every((answer, index) => answer === questions[index].correct);
       elements['review-list'].replaceChildren(...questions.map((item, index) => {
         const row = document.createElement('li');
         const correct = responses[index] === item.correct;
@@ -282,21 +319,68 @@
       window.scrollTo({ top: 0, behavior: 'instant' });
     }
 
+    function startPractice() {
+      practiceQuestions = questions.filter((item, index) => responses[index] !== item.correct);
+      practiceResponses = [];
+      practiceScore = 0;
+      practiceMode = true;
+      current = 0;
+      elements.results.hidden = true;
+      elements['practice-complete'].hidden = true;
+      elements.quiz.hidden = false;
+      elements['practice-banner'].hidden = false;
+      renderQuestion(true);
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }
+
+    function showPracticeComplete() {
+      elements.quiz.hidden = true;
+      elements['practice-complete'].hidden = false;
+      elements['practice-result-score'].replaceChildren(document.createTextNode(String(practiceScore)));
+      const total = document.createElement('span');
+      total.textContent = ` / ${practiceQuestions.length}`;
+      elements['practice-result-score'].append(total);
+      elements['practice-complete-title'].focus();
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }
+
     elements.next.addEventListener('click', () => {
-      if (responses.length <= current) return;
-      if (current === questions.length - 1) showResults();
+      const answers = activeResponses();
+      const items = activeQuestions();
+      if (answers.length <= current) return;
+      if (current === items.length - 1) {
+        if (practiceMode) showPracticeComplete();
+        else showResults();
+      }
       else { current++; renderQuestion(true); }
     });
-    elements.restart.addEventListener('click', () => {
+    function restartMission() {
       questions = shuffleQuestions(questionBank);
       current = 0;
       score = 0;
       responses = [];
+      practiceMode = false;
+      practiceQuestions = [];
+      practiceResponses = [];
+      practiceScore = 0;
+      elements['practice-banner'].hidden = true;
       elements.results.hidden = true;
+      elements['practice-complete'].hidden = true;
       elements.quiz.hidden = false;
       renderQuestion(true);
       window.scrollTo({ top: 0, behavior: 'instant' });
+    }
+
+    elements['practice-missed'].addEventListener('click', startPractice);
+    elements['return-results'].addEventListener('click', () => {
+      practiceMode = false;
+      elements['practice-complete'].hidden = true;
+      elements.results.hidden = false;
+      elements['results-title'].focus();
+      window.scrollTo({ top: 0, behavior: 'instant' });
     });
+    elements.restart.addEventListener('click', restartMission);
+    elements['practice-restart'].addEventListener('click', restartMission);
     renderQuestion();
   </script>
 </body>
