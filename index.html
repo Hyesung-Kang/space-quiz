@@ -61,6 +61,7 @@
     .answer.correct .letter { background: var(--mint); color: #172a25; border-color: var(--mint); }
     .answer.incorrect .letter { background: var(--coral); color: #351e20; border-color: var(--coral); }
     .answer.dimmed { opacity: .55; }
+    .shortcut-hint { color: var(--muted); font-size: 12px; margin: 12px 0 0; }
     .feedback { min-height: 116px; padding: 20px 0 12px; font-size: 13px; }
     .feedback strong { display: block; font-size: 15px; margin-bottom: 5px; }
     .feedback p { margin: 0; color: var(--muted); }
@@ -132,7 +133,8 @@
             <progress id="progress" value="0" max="10" aria-label="Questions answered">0 of 10</progress>
             <span id="category" class="category"></span>
             <h2 id="question" class="question" tabindex="-1"></h2>
-            <div id="answers" class="answers" role="group" aria-labelledby="question"></div>
+            <div id="answers" class="answers" role="group" aria-labelledby="question" aria-describedby="shortcut-hint"></div>
+            <p id="shortcut-hint" class="shortcut-hint">Tip: Press 1–4 to choose an answer.</p>
             <div id="feedback" class="feedback" role="status" aria-live="polite" aria-atomic="true"></div>
             <div class="actions"><span id="answered-label" class="answered-label">0 of 10 answered</span><button id="next" class="primary" disabled><span id="next-label">Next question</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></button></div>
           </div>
@@ -186,6 +188,7 @@
         const label = document.createElement('span');
         label.textContent = answer;
         button.append(letter, label);
+        button.setAttribute('aria-keyshortcuts', String(index + 1));
         button.addEventListener('click', () => selectAnswer(index));
         elements.answers.append(button);
       });
@@ -234,6 +237,13 @@
       updateStatus();
       elements.next.focus({ preventScroll: true });
     }
+
+    document.addEventListener('keydown', event => {
+      if (event.defaultPrevented || event.repeat || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+      if (!/^[1-4]$/.test(event.key)) return;
+      const answer = elements.answers.children[Number(event.key) - 1];
+      if (answer && !answer.disabled) answer.click();
+    });
 
     function showResults() {
       elements.quiz.hidden = true;
