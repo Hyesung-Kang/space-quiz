@@ -151,7 +151,7 @@
     <footer><span>ORBIT ACADEMY <span class="footer-star">✦</span> An adventure in knowledge</span><span>Earth is just the beginning.</span></footer>
   </div>
   <script>
-    const questions = [
+    const questionBank = [
       { category: 'Our solar system', question: 'Which planet is known as the Red Planet?', answers: ['Venus', 'Mars', 'Jupiter', 'Mercury'], correct: 1, fact: 'Mars gets its rusty red color from iron oxide in its rocks and dust.' },
       { category: 'One giant leap', question: 'Who was the first person to walk on the Moon?', answers: ['Yuri Gagarin', 'Buzz Aldrin', 'Neil Armstrong', 'Sally Ride'], correct: 2, fact: 'Neil Armstrong stepped onto the Moon on July 20, 1969, during the Apollo 11 mission.' },
       { category: 'Stellar neighbors', question: 'What is the closest star to Earth?', answers: ['Sirius', 'Polaris', 'Proxima Centauri', 'The Sun'], correct: 3, fact: 'The Sun is our closest star. Its light takes about eight minutes to reach Earth.' },
@@ -163,6 +163,16 @@
       { category: 'Eyes on the universe', question: 'Which telescope launched in December 2021 to observe primarily infrared light?', answers: ['Hubble Space Telescope', 'James Webb Space Telescope', 'Kepler Space Telescope', 'Chandra X-ray Observatory'], correct: 1, fact: 'Webb observes infrared light to study early galaxies, star formation, and the atmospheres of distant planets.' },
       { category: 'Home among the stars', question: 'What is the name of the galaxy that contains our solar system?', answers: ['Andromeda', 'Triangulum', 'The Milky Way', 'The Whirlpool Galaxy'], correct: 2, fact: 'Our solar system lies in the Orion Spur of the Milky Way, a barred spiral galaxy.' }
     ];
+    function shuffleQuestions(items) {
+      const shuffled = [...items];
+      for (let index = shuffled.length - 1; index > 0; index--) {
+        const other = Math.floor(Math.random() * (index + 1));
+        [shuffled[index], shuffled[other]] = [shuffled[other], shuffled[index]];
+      }
+      return shuffled;
+    }
+
+    let questions = shuffleQuestions(questionBank);
     const elements = Object.fromEntries(['quiz', 'results', 'question-count', 'score', 'progress', 'category', 'question', 'answers', 'feedback', 'answered-label', 'next', 'next-label', 'flightpath', 'result-score', 'results-message', 'results-title', 'review-list', 'restart'].map(id => [id, document.getElementById(id)]));
     let current = 0;
     let score = 0;
@@ -278,6 +288,7 @@
       else { current++; renderQuestion(true); }
     });
     elements.restart.addEventListener('click', () => {
+      questions = shuffleQuestions(questionBank);
       current = 0;
       score = 0;
       responses = [];
